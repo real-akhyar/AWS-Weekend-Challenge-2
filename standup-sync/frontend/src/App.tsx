@@ -23,7 +23,7 @@ type Report = {
 
 const API_BASE =
     import.meta.env.VITE_API_URL ||
-    "https://n9kqyu0vb7.execute-api.us-east-1.amazonaws.com/";
+    "https://n9kqyu0vb7.execute-api.us-east-1.amazonaws.com";
 
 type Tab = "generate" | "history" | "weekly";
 

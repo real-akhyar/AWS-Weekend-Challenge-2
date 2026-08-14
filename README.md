@@ -78,7 +78,6 @@ ARTICLE.md                Ready-to-publish challenge article
 
 ## Submission links
 
-- Repository: replace with your public GitHub URL before publishing.
-- Deployed app: add the S3/CloudFront URL if you deploy it.
+- Deployed app: waiting
 
 This repository itself is a valid source-code link for the challenge requirements. A deployed URL and screenshots make the submission easier to verify.

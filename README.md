@@ -76,8 +76,3 @@ infrastructure/           AWS SAM template
 ARTICLE.md                Ready-to-publish challenge article
 ```
 
-## Submission links
-
-- Deployed app: waiting
-
-This repository itself is a valid source-code link for the challenge requirements. A deployed URL and screenshots make the submission easier to verify.

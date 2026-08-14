@@ -1,0 +1,55 @@
+:root {
+  color: #251d2f;
+  background: #f5f0e6;
+  font-family: "DM Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; min-width: 320px; }
+
+.page-shell {
+  width: min(100% - 2.5rem, 980px);
+  margin: 0 auto;
+  padding: 4rem 0 5rem;
+}
+
+.intro { max-width: 650px; }
+.eyebrow, .card-label, .card-footer { font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; }
+.eyebrow { color: #875b4e; }
+h1, h2 { font-family: Fraunces, Georgia, serif; margin: 0; }
+h1 { font-size: clamp(3.5rem, 11vw, 7rem); line-height: .86; letter-spacing: -.07em; }
+.lede { max-width: 500px; line-height: 1.7; margin: 1.5rem 0 0; }
+
+.maker { margin-top: 3.5rem; max-width: 520px; }
+form { display: grid; gap: .7rem; }
+label { margin-top: .75rem; font-size: .77rem; }
+label span { color: #756c78; }
+select, input, button { font: inherit; border-radius: 0; }
+select, input { width: 100%; border: 1px solid #251d2f; background: #fffdf7; padding: .9rem; color: inherit; }
+button { cursor: pointer; }
+#generate-button { border: 1px solid #251d2f; background: #251d2f; color: #fffdf7; padding: 1rem; margin-top: 1.25rem; text-align: left; transition: transform .15s ease, background .15s ease; }
+#generate-button:hover { transform: translate(3px, -3px); background: #513c60; }
+#generate-button:disabled { cursor: wait; opacity: .7; transform: none; }
+.status { min-height: 1.25rem; color: #875b4e; font-size: .75rem; }
+
+.result { margin-top: 4rem; width: min(100%, 520px); }
+.creature-card { position: relative; overflow: hidden; min-height: 545px; padding: 2rem; color: #fffdf7; display: flex; flex-direction: column; align-items: center; text-align: center; box-shadow: 12px 12px 0 #251d2f; }
+.creature-card::before { content: ""; position: absolute; inset: 14px; border: 1px solid rgba(255,255,255,.55); pointer-events: none; }
+.theme-dusk { background: radial-gradient(circle at 70% 18%, #e78470 0 9%, transparent 9.5%), linear-gradient(145deg, #293a6d, #825181 60%, #d98472); }
+.theme-moss { background: radial-gradient(circle at 22% 20%, #f4c75a 0 8%, transparent 8.5%), linear-gradient(145deg, #26443c, #518064 60%, #9eb96e); }
+.theme-tide { background: radial-gradient(circle at 75% 20%, #ffd5a7 0 8%, transparent 8.5%), linear-gradient(145deg, #235b75, #459daf 60%, #b5d9c5); }
+.stars { position: relative; width: 100%; display: flex; justify-content: space-between; font-size: 1.5rem; }
+.card-label { position: relative; margin: 3rem 0 .5rem; }
+.animal-mark { position: relative; font-size: 6.5rem; line-height: 1; filter: drop-shadow(4px 4px 0 rgba(37,29,47,.22)); }
+h2 { position: relative; margin: 1.5rem 0 .6rem; font-size: 3.2rem; line-height: 1; letter-spacing: -.06em; }
+.compliment { position: relative; max-width: 370px; font-family: Fraunces, Georgia, serif; font-size: 1.35rem; line-height: 1.35; margin: 0; }
+.trait { position: relative; margin: 1.2rem 0 0; font-size: .72rem; line-height: 1.6; max-width: 330px; }
+.card-footer { position: relative; margin-top: auto; margin-bottom: 0; }
+.result-actions { display: flex; justify-content: space-between; margin-top: 1.8rem; }
+.text-button { padding: 0; border: 0; background: transparent; color: #251d2f; text-decoration: underline; font-size: .75rem; }
+
+@media (max-width: 560px) {
+  .page-shell { width: min(100% - 2rem, 980px); padding-top: 2.5rem; }
+  .creature-card { min-height: 500px; padding: 1.5rem; box-shadow: 8px 8px 0 #251d2f; }
+}

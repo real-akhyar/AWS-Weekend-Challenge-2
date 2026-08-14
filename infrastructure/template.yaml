@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless API for the Compliment Creature creative app.
+
+Parameters:
+  ModelId:
+    Type: String
+    Default: amazon.nova-lite-v1:0
+    Description: A Bedrock model enabled in this AWS Region.
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 20
+    MemorySize: 256
+
+Resources:
+  GenerateApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors: "'*'"
+
+  GenerateCreatureFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/generate/
+      Handler: index.handler
+      Description: Generates a creative compliment creature with Amazon Bedrock.
+      Environment:
+        Variables:
+          MODEL_ID: !Ref ModelId
+      Policies:
+        - Statement:
+            - Sid: InvokeOnlySelectedFoundationModel
+              Effect: Allow
+              Action: bedrock:InvokeModel
+              Resource: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${ModelId}"
+      Events:
+        Generate:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GenerateApi
+            Path: /generate
+            Method: post
+
+Outputs:
+  GenerateApiUrl:
+    Description: Public endpoint used by the static frontend.
+    Value: !Sub "https://${GenerateApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/generate"

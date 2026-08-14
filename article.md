@@ -1,159 +1,54 @@
-# Weekend Annoying Task Challenge: StandupSync
+# Weekend Creative Challenge: Compliment Creature
 
-**Tag:** `#productivity`
+**Tag: #creative-expression**
 
----
+## Vision and what the app does
 
-## Vision & What the App Does
+Compliment Creature is a tiny creative app for the moments when a person needs a kind word but does not want another generic motivational quote. The idea is simple: a visitor chooses a creature, selects the kind of day they have had, and can add one small detail. The app then introduces a whimsical companion with a name, a supportive compliment, and an absurdly specific trait. For example, someone who finally sends a difficult email might meet an otter called Mallow, who congratulates them for doing the brave thing while their brain tried to make it feel enormous.
 
-Every developer knows the pain — it's 9:25 AM, standup starts in five minutes, and you're scrambling to remember what you did yesterday. You open your terminal history, scroll through Slack threads, and check your pull requests, trying to piece together a coherent update. Meanwhile, your team's standup notes vanish into a Slack channel never to be referenced again.
+The creative output is a shareable creature card. The writing is generated fresh for each interaction, while the card uses hand-built visual themes and playful animal marks. I wanted the result to feel more like finding a tiny note in a pocket than talking to a chatbot. The app is deliberately narrow: it makes one small, positive thing well.
 
-**StandupSync** solves this by turning your raw task list into a clean, structured standup report with a single click. You paste what you did yesterday, what you plan to do today, and any blockers — the app structures it into a professional report, stores it in DynamoDB, and gives you a searchable history of every standup you've ever done.
+## How I built it
 
-The standout feature is the **weekly sprint summary** — select multiple daily reports and the app compiles them into a single sprint review with accomplishments, in-progress work, resolved blockers, active blockers, and next-week priorities. Perfect for sprint retrospectives, progress reports, or sharing with stakeholders who want the big picture without scrolling through Slack.
+I started by reducing the idea to one interaction. The first version has only an animal picker, a day-type picker, an optional short detail field, and one button. Keeping the form constrained makes the app quick to use and also gives the text model enough direction to make a relevant response.
 
-The core problem it solves: **manually writing and tracking standup updates is an annoying weekly chore that eats into productive time**. StandupSync makes it effortless and keeps everything organized.
+The frontend is plain HTML, CSS, and JavaScript. I chose this instead of a larger framework so the project could stay easy to understand, load quickly, and deploy as a static site. The visual design uses a paper-like background, expressive serif type, gradients, borders, and three predefined themes. The model does not create images; instead, its generated `theme` value selects a safe visual treatment already designed in CSS. This keeps the output attractive without adding cost, latency, or another AI service.
 
----
+The main technical challenge was making model output reliable enough for a UI. I need the Lambda to receive structured data, not a paragraph with unpredictable formatting. I solved this by asking Amazon Nova Lite to return only JSON containing `name`, `compliment`, `trait`, and `theme`. The Lambda removes an accidental JSON code fence if one appears, parses the response, limits field lengths, and allows only the known visual themes. If the request or model response is invalid, the app returns a friendly error instead of exposing an AWS error message.
 
-## How You Built It
+I also kept the optional memory detail limited to 160 characters. That gives people a personal touch without collecting more information than the app needs. The Lambda validates the animal and day options against lists that match the UI before making a Bedrock request.
 
-### Architecture Overview
+## AWS services used and architecture overview
 
-```
-┌──────────────────────┐
-│   Amazon S3          │
-│   (Static Website)   │  Frontend hosting
-└──────────┬───────────┘
-           │ HTTPS
-           ▼
-┌──────────────────────┐
-│   API Gateway        │
-│   (HTTP API)         │  4 routes → Lambda
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│   AWS Lambda         │
-│   (Python 3.12)      │  Report generation logic
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│   Amazon DynamoDB    │
-│   (standup-reports)  │  Persistent storage
-└──────────────────────┘
+Compliment Creature uses Amazon Bedrock, AWS Lambda, Amazon API Gateway, Amazon S3, and Amazon CloudWatch.
+
+```text
+S3-hosted browser app
+        |
+        | HTTPS POST /generate
+        v
+API Gateway -> Lambda -> Amazon Bedrock / Amazon Nova Lite
+                    |
+                    v
+             CloudWatch Logs
 ```
 
-The app follows a fully serverless architecture. A React frontend hosted on S3 calls an API Gateway HTTP API, which triggers a Lambda function. The Lambda processes the request, generates the standup report, and persists it to DynamoDB. No servers, no infrastructure to manage.
+Amazon S3 hosts the static HTML, CSS, JavaScript, and configuration file. The browser sends the user selection to an Amazon API Gateway endpoint. API Gateway invokes a Node.js AWS Lambda function. Lambda validates the input and calls Amazon Bedrock with Amazon Nova Lite through the Converse API. The response travels back through API Gateway and is rendered as the creature card. CloudWatch receives Lambda logs for troubleshooting.
 
-### Development Process
+I used an AWS SAM template to define the API and Lambda deployment. The Lambda role uses least privilege: it only receives `bedrock:InvokeModel` for the configured Nova foundation model, rather than broad access to every Bedrock model. This approach keeps AWS credentials out of the browser because the Bedrock request happens only in Lambda.
 
-I built StandupSync in four layers, each building on the last:
+## What I learned
 
-**Layer 1: DynamoDB** — Created a single table `standup-reports` with `id` as the partition key using on-demand capacity. Kept the schema simple: each item stores the report content, user ID, timestamps, and source tasks. No secondary indexes needed since the app primarily scans and retrieves by ID.
+This challenge taught me that an AI feature can be useful without becoming an entire chat interface. A strongly constrained prompt, a small schema, and careful validation make an AI-powered interaction feel intentional. I also learned how Amazon Bedrock's Converse API lets a Lambda function send a message to an Amazon Nova model and control output length and creativity through inference settings.
 
-**Layer 2: Lambda** — Wrote a Python 3.12 function that handles four routes: generating daily reports, listing all reports, fetching a report by ID, and compiling weekly summaries. The report generation logic uses smart task categorization — it scans task descriptions for keywords like "fixed", "deployed", or "resolved" to identify completed work versus items in progress. The weekly summary aggregates tasks across multiple reports, deduplicates entries, and produces a structured sprint review with metrics like average tasks per day and blocker resolution rate.
+On the AWS side, I practised separating a public static interface from a private model invocation. S3 serves the visual app, API Gateway exposes a focused endpoint, and Lambda holds the AWS permissions. I also learned why IAM scope matters even in a small prototype: permission for one selected model is better than a wildcard policy.
 
-**Layer 3: API Gateway** — Created an HTTP API with four routes mapped to the Lambda integration. Using HTTP API (instead of REST API) kept costs at zero for the Free Tier and simplified configuration — no method request/response models needed. CORS headers are handled at the Lambda level for cross-origin requests from the S3-hosted frontend.
+The final result is small, but it is complete: it produces an original creative artifact, uses AWS services directly, and can be deployed on Free Tier-friendly services. Most importantly, it makes a person smile in a few seconds.
 
-**Layer 4: S3 Frontend** — Built a React + TypeScript frontend with Vite, styled with a dark theme. Three tabs: Generate (the main input form), History (lists all past reports), and Weekly Summary (select reports and compile). The API base URL is a single constant that gets swapped for the deployed endpoint. S3 static website hosting serves the built assets with a bucket policy allowing public read access.
+## Try it
 
-### Challenges Faced
+Public repository: **REPLACE_WITH_YOUR_PUBLIC_GITHUB_REPOSITORY_URL**
 
-**Challenge 1: Bedrock Model Access**
+Deployed app: **REPLACE_WITH_YOUR_DEPLOYED_S3_OR_CLOUDFRONT_URL_IF_AVAILABLE**
 
-My initial plan included Amazon Bedrock with Nova Lite to generate reports using AI. I configured the IAM policy with Bedrock invoke permissions and wrote the Lambda to call `bedrock.converse()`. However, my account received error `002: Access to Bedrock models is not allowed for this account`. AWS recently retired the manual model access page, but some accounts still require enablement through support cases.
-
-**Solution:** I refactored the Lambda to use deterministic logic for report generation — keyword-based task categorization, smart summary generation, and statistical compilation for weekly summaries. The app is fully functional without Bedrock, and the architecture makes it trivial to add AI generation later by swapping the report generation function.
-
-**Challenge 2: S3 Static Website Configuration**
-
-After uploading the built frontend to S3, I hit a `404 NoSuchKey` error. The files were uploaded inside a `dist/` folder rather than at the bucket root. S3 static website hosting expects `index.html` directly at the root level.
-
-**Solution:** Deleted all objects, re-uploaded the *contents* of the `dist/` folder (not the folder itself) to the bucket root. This placed `index.html` at the correct path and resolved the issue immediately.
-
-**Challenge 3: IAM Policy Scoping**
-
-When creating the Lambda execution role, the IAM console only allows attaching either managed policies OR inline policies in a single flow — not both simultaneously. I initially planned to use `AWSLambdaBasicExecutionRole` plus an inline custom policy.
-
-**Solution:** Combined all permissions into one inline policy covering DynamoDB CRUD operations and CloudWatch logging. This simplified the role to a single policy document with two statement blocks, making it easier to audit and maintain.
-
----
-
-### S3 Static Website Hosting Setup
-
-![S3 Static Website Hosting](screenshots/S3.jpeg)
-
-The S3 bucket is configured with static website hosting enabled, serving `index.html` as the default document. A bucket policy allows public read access to all objects, making the frontend accessible without authentication.
-
-### DynamoDB Table
-
-![DynamoDB Table](screenshots/DynamoDB.jpeg)
-
-The `standup-reports` table uses `id` as the primary key with on-demand capacity mode. Each item stores the generated report alongside the source tasks, team context, and creation timestamp. The table currently holds generated reports from testing.
-
-### IAM Role Configuration
-
-![IAM Role](screenshots/IAM%20Roles.jpeg)
-
-The `StandupSyncLambdaRole` uses a single inline policy granting DynamoDB access (PutItem, GetItem, Scan, DeleteItem, Query) on the `standup-reports` table, plus CloudWatch logging permissions. This follows the principle of least privilege — the Lambda can only access exactly what it needs.
-
-### Lambda Function
-
-![Lambda Function](screenshots/Lambda%20Function.jpeg)
-
-The Python 3.12 Lambda function runs the core business logic. Initialized outside the handler for reuse across warm invocations, the DynamoDB client connects once at cold start. The function handles four routes through a single entry point, with a 30-second timeout for ample processing time.
-
-### API Gateway Routes
-
-![API Gateway](screenshots/API%20Gateway.jpeg)
-
-The HTTP API exposes four endpoints — `POST /reports` (generate), `GET /reports` (list), `GET /reports/{id}` (retrieve), and `POST /weekly-summary` (compile). All routes are integrated with the Lambda function, and the `$default` stage auto-deploys on every change.
-
----
-
-## AWS Services Used
-
-| Service | Purpose |
-|---------|---------|
-| **Amazon S3** | Hosts the React frontend as a static website. Public bucket policy enables anonymous read access. |
-| **Amazon API Gateway (HTTP API)** | Exposes REST endpoints that route HTTP requests to the Lambda function. Handles CORS preflight via Lambda. |
-| **AWS Lambda** | Serverless compute running Python 3.12. Contains all business logic — report generation, storage, and weekly compilation. |
-| **Amazon DynamoDB** | NoSQL database storing all generated reports. On-demand capacity keeps costs at zero for low-traffic usage. |
-
-All four services fall within the AWS Free Tier, meaning the app costs nothing to run for development and low-volume usage.
-
-### Request Flow
-
-1. User submits tasks through the S3-hosted frontend
-2. Frontend sends a POST request to API Gateway `/reports`
-3. API Gateway forwards the request to the Lambda function
-4. Lambda processes tasks, generates the report structure, and saves to DynamoDB
-5. Lambda returns the generated report JSON
-6. Frontend displays the structured report to the user
-
-For listing reports or viewing history, the frontend calls `GET /reports` which triggers a DynamoDB scan in the Lambda and returns all stored reports sorted by date.
-
----
-
-## What You Learned
-
-This was my first deep dive into AWS serverless architecture, and I came away with several key learnings:
-
-**Serverless is simpler than it sounds.** Four services working together — S3, API Gateway, Lambda, DynamoDB — and zero servers to provision or maintain. The entire backend took less than an hour to wire up once the architecture was clear.
-
-**HTTP API vs REST API matters.** API Gateway offers two flavors, and for simple Lambda integrations, HTTP API is the right choice. It's cheaper, simpler to configure, and has lower latency. I didn't need request validation, usage plans, or API keys — just clean HTTP routing.
-
-**IAM is the backbone of everything.** Every AWS service interaction goes through IAM. Getting the policy right — scoping DynamoDB access to a specific table, granting Lambda permission to write logs — is critical. A single missing permission blocks the entire request flow.
-
-**S3 static hosting has one rule:** `index.html` must be at the bucket root. Uploading a folder adds a path prefix that breaks the hosting. Simple mistake, easy fix, but it teaches you to understand the object key structure.
-
-**Have a fallback plan.** When Bedrock model access didn't work, I had to pivot. But because the Lambda used a clean function boundary for report generation, swapping the AI call for deterministic logic took five minutes. Good architecture makes pivots painless.
-
----
-
-## Links
-
-- **GitHub Repository:** [https://github.com/real-akhyar/AWS-Weekend-Challenge-2](https://github.com/real-akhyar/AWS-Weekend-Challenge-2)
-- **Live App:** [http://standup-sync-app.s3-website-us-east-1.amazonaws.com/](http://standup-sync-app.s3-website-us-east-1.amazonaws.com/)
+The public repository contains the complete frontend, Lambda source, AWS SAM infrastructure, and deployment instructions.

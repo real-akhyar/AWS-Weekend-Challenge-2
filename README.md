@@ -1,208 +1,84 @@
-# StandupSync — Smart Standup Report Generator
+# Compliment Creature
 
-A serverless app that generates structured daily standup reports and weekly sprint summaries for dev teams. Built for the AWS Weekend Annoying Task Challenge.
+Compliment Creature is a tiny creative app for the AWS Weekend Creative Challenge. Pick an animal, describe the kind of day you had, and receive a whimsical creature with an original compliment and odd little talent.
 
-## Architecture
+It is intentionally small: one page, one API endpoint, and one creative moment. The frontend supplies the visual creature card, while Amazon Bedrock creates the words.
 
-```
-┌──────────────────────┐
-│   S3 Static Hosting  │   HTML/CSS/JS frontend
-└──────────┬───────────┘
-           │ HTTPS
-           ▼
-┌──────────────────────┐
-│    API Gateway       │   HTTP API routes
-│  (standup-sync-api)  │   POST /reports, GET /reports/{id}
-│                      │   GET /reports, POST /weekly-summary
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│    AWS Lambda        │   Python 3.12
-│ (standup-sync-gen)   │   Report generation + smart categorization
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ Amazon DynamoDB      │
-│ standup-reports      │   Report storage
-└──────────────────────┘
+## AWS architecture
+
+```text
+Static browser app (Amazon S3)
+          |
+          | POST /generate
+          v
+Amazon API Gateway -> AWS Lambda -> Amazon Bedrock (Amazon Nova Lite)
+                              |
+                              v
+                       Amazon CloudWatch Logs
 ```
 
-## AWS Services Used
+The Lambda function validates the form inputs, sends a constrained prompt to Amazon Bedrock's Converse API, validates the returned JSON, and returns the name, compliment, trait, and visual theme. The Lambda execution role has `bedrock:InvokeModel` permission only for the model supplied by the SAM parameter.
 
-| Service | Purpose |
-|---------|---------|
-| Amazon S3 | Static website hosting for the frontend |
-| AWS Lambda | Serverless compute — report generation logic |
-| Amazon API Gateway (HTTP API) | REST API endpoints |
-| Amazon DynamoDB | NoSQL database for report storage |
+## Run the frontend locally
 
-## Quick Start
+The frontend has no build step. Open `frontend/index.html` in a browser, or serve it locally with any static web server. The Generate button will explain that configuration is needed until the API URL is added.
 
-### 1. Create DynamoDB Table
+## Deploy the API
 
-1. DynamoDB → Create table
-2. Table name: `standup-reports`
-3. Partition key: `id` (String)
-4. Use default settings (on-demand capacity)
-5. Create
+Prerequisites:
 
-### 2. Create IAM Role for Lambda
+- An AWS account and AWS CLI credentials
+- AWS SAM CLI
+- Node.js 20 or later
+- Amazon Bedrock model access enabled for `amazon.nova-lite-v1:0` in your chosen Region
 
-1. IAM → Roles → Create role
-2. Trusted entity: AWS service → Lambda
-3. Add inline policy (see below)
-4. Name: `StandupSyncLambdaRole`
-
-**Inline policy JSON:**
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "DynamoDBAccess",
-            "Effect": "Allow",
-            "Action": [
-                "dynamodb:PutItem",
-                "dynamodb:GetItem",
-                "dynamodb:Scan",
-                "dynamodb:DeleteItem",
-                "dynamodb:Query"
-            ],
-            "Resource": "arn:aws:dynamodb:us-east-1:*:table/standup-reports"
-        },
-        {
-            "Sid": "CloudWatchLogs",
-            "Effect": "Allow",
-            "Action": [
-                "logs:CreateLogGroup",
-                "logs:CreateLogStream",
-                "logs:PutLogEvents"
-            ],
-            "Resource": "arn:aws:logs:us-east-1:*:log-group:/aws/lambda/*:*"
-        }
-    ]
-}
-```
-
-### 4. Create Lambda Function
-
-1. Lambda → Create function → Author from scratch
-2. Name: `standup-sync-generator`
-3. Runtime: Python 3.12
-4. Architecture: x86_64
-5. Execution role: `StandupSyncLambdaRole` (existing role)
-6. Copy the code from `backend/lambda_function.py` into the code editor
-7. Click **Deploy**
-8. Go to Configuration → General configuration → Timeout: **30 seconds**
-
-### 5. Create API Gateway
-
-1. API Gateway → Create API → HTTP API → Build
-2. API name: `standup-sync-api`
-3. Configure routes:
-   - `POST /reports`
-   - `GET /reports`
-   - `GET /reports/{id}`
-   - `POST /weekly-summary`
-4. Attach integration to Lambda `standup-sync-generator`
-5. Stage: `$default` (auto-deploy)
-6. Copy the **Invoke URL**
-
-### 6. Deploy Frontend via S3
-
-1. S3 → Create bucket → name: `standup-sync-frontend-YOURNAME`
-2. Uncheck "Block all public access" (acknowledge)
-3. Go to bucket → Properties → **Static website hosting** → Enable
-4. Index document: `index.html` → Save
-5. Go to bucket → Permissions → **Bucket Policy** → paste:
-
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": "*",
-            "Action": "s3:GetObject",
-            "Resource": "arn:aws:s3:::standup-sync-frontend-YOURNAME/*"
-        }
-    ]
-}
-```
-
-6. Build the frontend locally:
-```bash
-cd frontend
-npm install
-npm run build
-```
-
-7. Upload the entire `dist/` folder to the S3 bucket
-8. Open the **Static website hosting URL** from Properties tab
-
-### 7. Configure Frontend
-
-Before building, open `frontend/src/App.tsx` and update the `API_BASE` constant with your API Gateway URL:
-
-```ts
-const API_BASE = "https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com";
-```
-
-Or set the `VITE_API_URL` environment variable in Amplify.
-
-## API Endpoints
-
-### Generate Standup Report
-```
-POST /reports
-Content-Type: application/json
-
-{
-  "yesterdayTasks": ["Fixed login bug", "Code review PR #342"],
-  "todayPlan": ["Deploy v2.3 to staging", "Write integration tests"],
-  "blockers": ["Waiting on DevOps to provision staging DB"],
-  "teamContext": "Backend API team working on payment service",
-  "userId": "john-dev"
-}
-```
-
-### List All Reports
-```
-GET /reports?limit=20
-```
-
-### Get Specific Report
-```
-GET /reports/{reportId}
-```
-
-### Generate Weekly Summary
-```
-POST /weekly-summary
-Content-Type: application/json
-
-{
-  "reportIds": ["uuid-1", "uuid-2", "uuid-3", "uuid-4", "uuid-5"],
-  "userId": "john-dev"
-}
-```
-
-## Local Development
+From the project root:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+sam build --template-file infrastructure/template.yaml
+sam deploy --guided --template-file infrastructure/template.yaml
 ```
 
-Set `VITE_API_URL` in `.env` pointing to your API Gateway URL.
+During the guided deploy, choose a Region where Amazon Nova Lite is available and model access is enabled. Copy the `GenerateApiUrl` output into `frontend/config.js`:
 
-## Technologies
+```js
+window.COMPLIMENT_CREATURE_API_URL = "https://your-api-id.execute-api.your-region.amazonaws.com/Prod/generate";
+```
 
-- **Frontend**: React 18, TypeScript, Vite
-- **Backend**: Python 3.12, AWS Lambda
-- **Database**: Amazon DynamoDB
-- **Hosting**: Amazon S3, API Gateway
+## Host the frontend on S3
+
+1. Create an S3 bucket in the same Region or your preferred web-hosting Region.
+2. Enable static website hosting and set `index.html` as the index document.
+3. Upload the contents of `frontend/`, including the edited `config.js`.
+4. Make the website readable publicly, or serve the bucket privately through CloudFront with Origin Access Control.
+5. Open the website URL and generate a creature.
+
+For a quick upload after creating the bucket:
+
+```bash
+aws s3 sync frontend/ s3://YOUR_BUCKET_NAME/ --delete
+```
+
+## Test checklist
+
+- Choose an animal and day type, then generate a creature.
+- Try the optional detail field with a short personal accomplishment.
+- Confirm the returned card has a name, compliment, trait, and changing visual theme.
+- Test the copy button and narrow mobile layout.
+- Check Lambda errors in CloudWatch Logs if generation fails.
+
+## Project layout
+
+```text
+frontend/                 Static browser app
+backend/generate/         Lambda handler and dependencies
+infrastructure/           AWS SAM template
+ARTICLE.md                Ready-to-publish challenge article
+```
+
+## Submission links
+
+- Repository: replace with your public GitHub URL before publishing.
+- Deployed app: add the S3/CloudFront URL if you deploy it.
+
+This repository itself is a valid source-code link for the challenge requirements. A deployed URL and screenshots make the submission easier to verify.

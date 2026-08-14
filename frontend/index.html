@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Meet a tiny creature with exactly the compliment your day needs." />
+    <title>Compliment Creature</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">A small dose of encouragement</p>
+        <h1 id="page-title">Compliment<br />Creature</h1>
+        <p class="lede">Tell us what kind of day you had. A peculiar little creature will arrive with the words you need.</p>
+      </section>
+
+      <section class="maker" aria-label="Create your compliment creature">
+        <form id="creature-form">
+          <label for="animal">Choose a creature</label>
+          <select id="animal" name="animal">
+            <option value="otter">Otter</option>
+            <option value="frog">Frog</option>
+            <option value="capybara">Capybara</option>
+            <option value="crow">Crow</option>
+            <option value="axolotl">Axolotl</option>
+            <option value="moth">Moth</option>
+          </select>
+
+          <label for="day">How was your day?</label>
+          <select id="day" name="day">
+            <option value="I got through a difficult day">I got through a difficult day</option>
+            <option value="I made a brave choice">I made a brave choice</option>
+            <option value="I feel a little stuck">I feel a little stuck</option>
+            <option value="I did something I am proud of">I did something I am proud of</option>
+            <option value="I need a gentle reset">I need a gentle reset</option>
+          </select>
+
+          <label for="detail">A tiny detail <span>(optional)</span></label>
+          <input id="detail" name="detail" maxlength="160" placeholder="e.g. I finally sent the email" />
+
+          <button id="generate-button" type="submit">Meet my creature <span aria-hidden="true">&#8594;</span></button>
+        </form>
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
+
+      <section id="result" class="result" hidden aria-live="polite">
+        <article id="creature-card" class="creature-card theme-dusk">
+          <div class="stars" aria-hidden="true">&#10022; &#183; &#10022;</div>
+          <p class="card-label">Your compliment creature</p>
+          <div id="animal-mark" class="animal-mark" aria-hidden="true">&#129446;</div>
+          <h2 id="creature-name">Mallow</h2>
+          <p id="compliment" class="compliment"></p>
+          <p id="trait" class="trait"></p>
+          <p class="card-footer">Keep this close.</p>
+        </article>
+        <div class="result-actions">
+          <button id="again-button" class="text-button" type="button">Try another</button>
+          <button id="copy-button" class="text-button" type="button">Copy words</button>
+        </div>
+      </section>
+    </main>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
